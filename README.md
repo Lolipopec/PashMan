@@ -37,7 +37,13 @@
 
 Кратко:
 - **Windows** — двойной клик по `pashman-win.exe` (при предупреждении SmartScreen: «Подробнее» → «Выполнить в любом случае»).
-- **macOS** — в Терминале: `chmod +x ./pashman-mac-arm64 && xattr -d com.apple.quarantine ./pashman-mac-arm64 && ./pashman-mac-arm64`.
+- **macOS (без снятия карантина)** — скачать через Терминал: `curl` не ставит карантин, поэтому Gatekeeper не блокирует:
+  ```bash
+  # Apple Silicon (M1–M4); для Intel — pashman-mac-intel
+  curl -L -o pashman https://github.com/Lolipopec/PashMan/raw/main/dist/pashman-mac-arm64
+  chmod +x pashman && ./pashman
+  ```
+  Если файл уже скачан браузером — **правый клик по файлу → «Открыть» → «Открыть»** (подтвердить один раз, Терминал не нужен).
 
 Интерфейс откроется на `http://127.0.0.1:8787` (если порт занят — следующий свободный).
 
