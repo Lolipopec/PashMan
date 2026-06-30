@@ -22,22 +22,18 @@
 
 ## Запуск
 
-Готовые бинарники — скачать напрямую:
-
 | Скачать | ОС |
 |---------|----|
 | ⬇️ [**pashman-win.exe**](https://github.com/Lolipopec/PashMan/raw/main/dist/pashman-win.exe) | Windows 10/11 |
 | ⬇️ [**pashman-mac-arm64**](https://github.com/Lolipopec/PashMan/raw/main/dist/pashman-mac-arm64) | macOS на Apple Silicon (M1–M4) |
 | ⬇️ [**pashman-mac-intel**](https://github.com/Lolipopec/PashMan/raw/main/dist/pashman-mac-intel) | macOS на Intel |
 
-> Ссылки `…/raw/main/…` отдают файл напрямую (скачивание начнётся сразу).
-
-Подробная инструкция для пользователя (включая снятие карантина Gatekeeper на macOS) —
+Подробная инструкция для пользователя —
 [`dist/ИНСТРУКЦИЯ.md`](dist/%D0%98%D0%9D%D0%A1%D0%A2%D0%A0%D0%A3%D0%9A%D0%A6%D0%98%D0%AF.md).
 
 Кратко:
 - **Windows** — двойной клик по `pashman-win.exe` (при предупреждении SmartScreen: «Подробнее» → «Выполнить в любом случае»).
-- **macOS (без снятия карантина)** — скачать через Терминал: `curl` не ставит карантин, поэтому Gatekeeper не блокирует:
+- **macOS** — скачать через Терминал: `curl`:
   ```bash
   # Apple Silicon (M1–M4); для Intel — pashman-mac-intel
   curl -L -o pashman https://github.com/Lolipopec/PashMan/raw/main/dist/pashman-mac-arm64
