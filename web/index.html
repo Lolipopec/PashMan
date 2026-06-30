@@ -79,11 +79,11 @@
   button.active-view{border-color:var(--accent2);color:var(--txt);background:var(--panel)}
   #csvTable{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:6px}
   #csvTable table{width:auto;border-collapse:collapse}
-  #csvTable th,#csvTable td{border:1px solid var(--line);padding:0}
-  #csvTable th.hdr{display:flex;align-items:center}
+  #csvTable th,#csvTable td{border:1px solid var(--line);padding:0;vertical-align:middle}
   #csvTable input{border:none;background:transparent;border-radius:0;width:150px;padding:6px 7px}
   #csvTable input:focus{background:var(--panel2);outline:1px solid var(--accent2)}
   #csvTable th.hdr{background:var(--panel2)}
+  #csvTable .hdrwrap{display:flex;align-items:center}
   #csvTable th.hdr input{font-weight:700;flex:1;min-width:90px}
   #csvTable .corner{background:var(--panel2);width:30px}
   #csvTable .coldel,#csvTable .rowdel{border:none;background:transparent;color:var(--err);cursor:pointer;font-size:11px;padding:2px 5px;opacity:.5}
@@ -538,11 +538,12 @@ function renderCsvTable(){
   const corner=document.createElement('th'); corner.className='corner'; htr.appendChild(corner);
   for(let c=0;c<cols;c++){
     const th=document.createElement('th'); th.className='hdr';
+    const wrap=document.createElement('div'); wrap.className='hdrwrap';
     const inp=document.createElement('input'); inp.value=csvGrid[0][c]||''; inp.placeholder='колонка';
     inp.oninput=()=>{ csvGrid[0][c]=inp.value; gridToCsvText(); };
     const del=document.createElement('button'); del.type='button'; del.className='coldel'; del.textContent='✕'; del.title='Удалить столбец';
     del.onclick=()=>delCol(c);
-    th.appendChild(inp); th.appendChild(del); htr.appendChild(th);
+    wrap.appendChild(inp); wrap.appendChild(del); th.appendChild(wrap); htr.appendChild(th);
   }
   thead.appendChild(htr); tbl.appendChild(thead);
   const tb=document.createElement('tbody');
