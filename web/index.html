@@ -78,13 +78,15 @@
   .file-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
   button.active-view{border-color:var(--accent2);color:var(--txt);background:var(--panel)}
   #csvTable{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:6px}
-  #csvTable table{width:auto;border-collapse:collapse}
-  #csvTable th,#csvTable td{border:1px solid var(--line);padding:0;vertical-align:middle}
-  #csvTable input{border:none;background:transparent;border-radius:0;width:150px;padding:6px 7px}
+  #csvTable table{width:auto;border-collapse:collapse;table-layout:fixed}
+  #csvTable th,#csvTable td{border:1px solid var(--line);padding:0;vertical-align:middle;overflow:hidden}
+  #csvTable input{border:none;background:transparent;border-radius:0;width:100%;padding:6px 7px}
   #csvTable input:focus{background:var(--panel2);outline:1px solid var(--accent2)}
-  #csvTable th.hdr{background:var(--panel2)}
+  #csvTable th.hdr{background:var(--panel2);position:relative}
   #csvTable .hdrwrap{display:flex;align-items:center}
-  #csvTable th.hdr input{font-weight:700;flex:1;min-width:90px}
+  #csvTable th.hdr input{font-weight:700;flex:1;min-width:0}
+  #csvTable .col-resizer{position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;z-index:2;user-select:none}
+  #csvTable .col-resizer:hover{background:var(--accent2)}
   #csvTable .corner{background:var(--panel2);width:30px}
   #csvTable .coldel,#csvTable .rowdel{border:none;background:transparent;color:var(--err);cursor:pointer;font-size:11px;padding:2px 5px;opacity:.5}
   #csvTable .coldel:hover,#csvTable .rowdel:hover{opacity:1}
@@ -530,10 +532,29 @@ function normalizeGrid(){
 }
 function csvTextToGrid(){ csvGrid=parseCSVText($('#csv').value, getDelim()); normalizeGrid(); }
 function gridToCsvText(){ $('#csv').value=serializeCSV(csvGrid, getDelim()); }
+let csvColW=[]; // ширины колонок (px), сохраняются между перерисовками
+function applyColWidths(){
+  const cols=$('#csvTable').querySelectorAll('colgroup col');
+  for(let c=0;c<csvColW.length;c++){ if(cols[c+1]) cols[c+1].style.width=csvColW[c]+'px'; }
+}
+function startResize(e, c){
+  e.preventDefault(); e.stopPropagation();
+  const startX=e.clientX, startW=csvColW[c];
+  const onMove=ev=>{ csvColW[c]=Math.max(40, startW+(ev.clientX-startX)); applyColWidths(); };
+  const onUp=()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); document.body.style.cursor=''; };
+  document.body.style.cursor='col-resize';
+  document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
+}
 function renderCsvTable(){
   normalizeGrid();
   const cols=csvGrid[0].length;
+  while(csvColW.length<cols) csvColW.push(150);
+  csvColW.length=cols;
   const tbl=document.createElement('table');
+  const cg=document.createElement('colgroup');
+  const c0=document.createElement('col'); c0.style.width='30px'; cg.appendChild(c0);
+  for(let c=0;c<cols;c++){ const col=document.createElement('col'); col.style.width=csvColW[c]+'px'; cg.appendChild(col); }
+  tbl.appendChild(cg);
   const thead=document.createElement('thead'), htr=document.createElement('tr');
   const corner=document.createElement('th'); corner.className='corner'; htr.appendChild(corner);
   for(let c=0;c<cols;c++){
@@ -543,7 +564,9 @@ function renderCsvTable(){
     inp.oninput=()=>{ csvGrid[0][c]=inp.value; gridToCsvText(); };
     const del=document.createElement('button'); del.type='button'; del.className='coldel'; del.textContent='✕'; del.title='Удалить столбец';
     del.onclick=()=>delCol(c);
-    wrap.appendChild(inp); wrap.appendChild(del); th.appendChild(wrap); htr.appendChild(th);
+    const rez=document.createElement('div'); rez.className='col-resizer'; rez.title='Потяни, чтобы изменить ширину';
+    rez.onmousedown=ev=>startResize(ev,c);
+    wrap.appendChild(inp); wrap.appendChild(del); th.appendChild(wrap); th.appendChild(rez); htr.appendChild(th);
   }
   thead.appendChild(htr); tbl.appendChild(thead);
   const tb=document.createElement('tbody');
@@ -566,6 +589,7 @@ function renderCsvTable(){
 }
 function delCol(c){
   csvGrid.forEach(r=>r.splice(c,1));
+  csvColW.splice(c,1);
   if(!csvGrid.length || !csvGrid[0].length) csvGrid=[['']];
   gridToCsvText(); renderCsvTable();
 }
