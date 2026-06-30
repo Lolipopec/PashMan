@@ -1,0 +1,11 @@
+# Пользовательские коллекции — могут содержать секреты/токены. НЕ коммитим.
+collections/
+dist/collections/
+
+# Локальная конфигурация Claude Code
+.claude/
+
+# Прочее
+*.log
+.DS_Store
+Thumbs.db

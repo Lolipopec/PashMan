@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PashMan</title>
+<style>
+  :root{
+    --bg:#1e1f26; --panel:#262833; --panel2:#2f3240; --line:#3a3d4d;
+    --txt:#e6e7ee; --muted:#9aa0b5; --accent:#ff6c37; --accent2:#3a86ff;
+    --ok:#3ad29f; --err:#ff5c70; --warn:#ffce5c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);height:100vh;display:flex;flex-direction:column}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:10px}
+  header .logo{font-weight:700;color:var(--accent);font-size:16px}
+  header .sub{color:var(--muted);font-size:12px}
+  .layout{flex:1;display:flex;min-height:0}
+  aside{width:240px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  aside .head{padding:8px 10px;border-bottom:1px solid var(--line);display:flex;gap:6px;align-items:center}
+  aside .list{overflow:auto;flex:1;padding:4px}
+  .col-name{font-size:12px;color:var(--muted);padding:6px 8px 2px;text-transform:uppercase;letter-spacing:.5px}
+  .req-item{padding:6px 8px;border-radius:6px;cursor:pointer;display:flex;gap:6px;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .req-item:hover{background:var(--panel2)}
+  .req-item .m{font-weight:700;font-size:11px;width:42px;flex:none}
+  .req-item .rn{flex:1;overflow:hidden;text-overflow:ellipsis}
+  .req-item .ico,.req-item .del{flex:none;opacity:0;border:none;background:transparent;padding:0 4px;font-size:13px;border-radius:4px}
+  .req-item .ico{color:var(--muted)}
+  .req-item .del{color:var(--err)}
+  .req-item:hover .ico,.req-item:hover .del{opacity:.8}
+  .req-item .ico:hover{opacity:1;background:var(--panel)}
+  .req-item .del:hover{opacity:1;background:rgba(255,92,112,.15)}
+  mark{background:var(--warn);color:#1a1a1a;border-radius:2px;padding:0 1px}
+  main{flex:1;display:flex;flex-direction:column;min-height:0;min-width:0}
+  .urlbar{display:flex;gap:6px;padding:10px;border-bottom:1px solid var(--line);align-items:center}
+  select,input,textarea,button{font:inherit;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 9px;outline:none}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent2)}
+  input.url{flex:1}
+  button{cursor:pointer;background:var(--panel2)}
+  button:hover{border-color:var(--accent2)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#1a1a1a;font-weight:700}
+  button.primary:hover{filter:brightness(1.08)}
+  button.ghost{background:transparent}
+  .tabs{display:flex;gap:4px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
+  .tab{padding:7px 12px;cursor:pointer;border-radius:6px 6px 0 0;color:var(--muted);border:1px solid transparent;border-bottom:none}
+  .tab.active{color:var(--txt);background:var(--panel);border-color:var(--line)}
+  .panes{padding:10px;overflow:auto}
+  .pane{display:none}
+  .pane.active{display:block}
+  textarea{width:100%;min-height:180px;font-family:ui-monospace,Consolas,monospace;resize:vertical}
+  .kv{display:flex;gap:6px;margin-bottom:6px}
+  .kv input{flex:1}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}
+  th{background:var(--panel2)}
+  .resp{border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .resp .bar{padding:8px 10px;display:flex;gap:14px;align-items:center;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .badge{padding:2px 8px;border-radius:10px;font-weight:700;font-size:12px}
+  .badge.ok{background:rgba(58,210,159,.15);color:var(--ok)}
+  .badge.err{background:rgba(255,92,112,.15);color:var(--err)}
+  pre{margin:0;padding:10px;overflow:auto;font-family:ui-monospace,Consolas,monospace;font-size:13px;white-space:pre-wrap;word-break:break-word}
+  .resp .body{overflow:auto;max-height:38vh}
+  .row-flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  label.lbl{color:var(--muted);font-size:12px}
+  .hint{color:var(--muted);font-size:12px;margin:4px 0 8px}
+  .toast{position:fixed;bottom:16px;right:16px;background:var(--panel2);border:1px solid var(--line);padding:10px 14px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .rrow{cursor:pointer}
+  .rrow:hover td{background:var(--panel2)}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(920px,92vw);max-height:88vh;display:flex;flex-direction:column}
+  .modal .mhead{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center}
+  .modal .mbody{padding:12px 14px;overflow:auto}
+  .modal pre{background:var(--panel2);border:1px solid var(--line);border-radius:6px}
+  .small{font-size:12px;color:var(--muted)}
+  .split{display:flex;gap:14px;flex-wrap:wrap}
+  .file-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">PashMan</span>
+  <span class="sub">локальный клиент HTTP-запросов</span>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="head">
+      <select id="collectionFile" style="flex:1"></select>
+      <button class="ghost" id="openCollectionFile" title="Открыть коллекцию из JSON-файла">📂</button>
+      <button class="ghost" id="renameCollection" title="Переименовать коллекцию">✎</button>
+      <button class="ghost" id="reloadCollections" title="Обновить список">⟳</button>
+      <input type="file" id="collectionFileInput" accept=".json,application/json" style="display:none">
+    </div>
+    <div class="list" id="reqList"></div>
+    <div class="head" style="border-top:1px solid var(--line);border-bottom:none">
+      <button id="newReqBtn" style="flex:1">+ Новый запрос</button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="urlbar">
+      <select id="method" style="width:110px">
+        <option>GET</option><option>POST</option><option>PUT</option>
+        <option>PATCH</option><option>DELETE</option><option>HEAD</option><option>OPTIONS</option>
+      </select>
+      <input class="url" id="url" placeholder="https://api.example.com/path">
+      <button class="primary" id="sendBtn">Отправить</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="auth">Авторизация</div>
+      <div class="tab" data-tab="params">Параметры</div>
+      <div class="tab" data-tab="headers">Заголовки</div>
+      <div class="tab" data-tab="body">Тело (JSON)</div>
+      <div class="tab" data-tab="batch">Прогон по CSV</div>
+      <div class="tab" data-tab="save">Сохранение</div>
+    </div>
+
+    <div class="panes">
+      <!-- AUTH -->
+      <div class="pane active" data-pane="auth">
+        <div class="row-flex">
+          <label class="lbl">Тип:</label>
+          <select id="authType">
+            <option value="none">Без авторизации</option>
+            <option value="basic">Basic (логин/пароль)</option>
+            <option value="bearer">Bearer токен</option>
+          </select>
+        </div>
+        <div id="authBasic" style="display:none">
+          <div class="kv"><input id="authUser" placeholder="Логин"></div>
+          <div class="kv"><input id="authPass" placeholder="Пароль"></div>
+        </div>
+        <div id="authBearer" style="display:none">
+          <div class="kv"><input id="authToken" placeholder="Токен (без слова Bearer)"></div>
+        </div>
+        <label class="row-flex"><input type="checkbox" id="insecure" style="width:auto"> <span class="small">Не проверять TLS-сертификат (для самоподписанных)</span></label>
+      </div>
+
+      <!-- QUERY PARAMS -->
+      <div class="pane" data-pane="params">
+        <div class="hint">Параметры строки запроса (?key=value). Синхронизируются с полем URL в обе стороны. Можно использовать <b>{{колонка}}</b>.</div>
+        <div id="paramsList"></div>
+        <button class="ghost" id="addParam">+ Добавить параметр</button>
+      </div>
+
+      <!-- HEADERS -->
+      <div class="pane" data-pane="headers">
+        <div id="headersList"></div>
+        <button class="ghost" id="addHeader">+ Добавить заголовок</button>
+      </div>
+
+      <!-- BODY -->
+      <div class="pane" data-pane="body">
+        <div class="row-flex">
+          <button class="ghost" id="formatJson">Форматировать JSON</button>
+          <span class="small">Тело отправляется как <b>application/json</b>, если не задан свой Content-Type.</span>
+        </div>
+        <textarea id="body" placeholder='{ "key": "value" }'></textarea>
+      </div>
+
+      <!-- BATCH -->
+      <div class="pane" data-pane="batch">
+        <div class="hint">Запрос выше выполнится для каждой строки CSV. Подставляй колонки через <b>{{имя_колонки}}</b> в URL, заголовках, теле и полях авторизации. Первая строка CSV — заголовки колонок.</div>
+        <div class="row-flex">
+          <label class="lbl">Разделитель:</label>
+          <input id="delimiter" value="," style="width:60px" maxlength="1">
+          <span class="small">по умолчанию запятая; можно ; | tab и т.п.</span>
+          <input type="file" id="csvFile" accept=".csv,.txt" style="width:auto">
+          <span class="small" id="csvFileName"></span>
+          <button class="ghost" id="clearCsv" title="Очистить CSV и результаты">✕ Очистить</button>
+        </div>
+        <textarea id="csv" placeholder="id,name&#10;1,Alice&#10;2,Bob"></textarea>
+        <div class="row-flex" style="margin-top:8px">
+          <button class="primary" id="runBatch">Прогнать по CSV</button>
+          <button id="stopBatch" style="display:none;border-color:var(--err);color:var(--err)">⏹ Остановить</button>
+          <label class="lbl">Пауза между запросами, мс:</label>
+          <input id="delayMs" type="number" min="0" step="50" value="0" style="width:90px">
+          <span class="small" id="batchInfo"></span>
+        </div>
+        <div class="row-flex" id="batchFilterBar" style="display:none">
+          <label class="lbl">Статус:</label>
+          <select id="statusFilter"></select>
+          <input id="batchSearch" placeholder="поиск по всем полям результатов" style="flex:1;min-width:140px">
+          <span class="small" id="filterInfo"></span>
+        </div>
+        <div id="batchResults" style="margin-top:10px;overflow:auto"></div>
+      </div>
+
+      <!-- SAVE -->
+      <div class="pane" data-pane="save">
+        <div class="hint">Запросы хранятся в JSON-файлах в папке <b>collections</b> рядом с программой.</div>
+        <div class="row-flex"><label class="lbl" style="width:120px">Имя запроса:</label><input id="reqName" placeholder="Например: Создать пользователя" style="flex:1"></div>
+        <div class="row-flex"><label class="lbl" style="width:120px">Файл:</label><input id="saveFile" placeholder="my.json" style="flex:1"></div>
+        <div class="row-flex">
+          <button class="primary" id="saveSmart">Сохранить</button>
+          <button id="saveNewFile">Сохранить в новый файл…</button>
+        </div>
+        <div class="small" id="saveHint"></div>
+        <div class="small" id="saveInfo"></div>
+      </div>
+    </div>
+
+    <!-- RESPONSE -->
+    <div class="resp" style="flex:1">
+      <div class="bar">
+        <span class="small">Ответ</span>
+        <span id="respStatus"></span>
+        <span class="small" id="respTime"></span>
+        <span class="small" id="respSize"></span>
+        <input id="respSearch" placeholder="поиск в теле" style="width:160px;padding:4px 8px">
+        <span class="small" id="respSearchInfo"></span>
+        <div style="margin-left:auto"></div>
+        <button class="ghost" id="respBodyTab">Тело</button>
+        <button class="ghost" id="respHeadTab">Заголовки</button>
+      </div>
+      <div class="body">
+        <pre id="respBody"></pre>
+        <pre id="respHead" style="display:none"></pre>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="confirmModal">
+  <div class="modal" style="width:min(440px,92vw)">
+    <div class="mbody">
+      <div id="confirmMsg" style="margin-bottom:16px;white-space:pre-line"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button id="confirmNo" class="ghost">Отмена</button>
+        <button id="confirmYes" class="primary">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="promptModal">
+  <div class="modal" style="width:min(440px,92vw)">
+    <div class="mbody">
+      <div id="promptMsg" style="margin-bottom:10px"></div>
+      <input id="promptInput" style="width:100%;margin-bottom:16px">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button id="promptNo" class="ghost">Отмена</button>
+        <button id="promptYes" class="primary">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="detailModal">
+  <div class="modal">
+    <div class="mhead">
+      <b>Запрос #<span id="dIdx"></span></b>
+      <span id="dStatus"></span>
+      <span class="small" id="dMeta"></span>
+      <button class="ghost" id="dClose" style="margin-left:auto">✕ Закрыть</button>
+    </div>
+    <div class="mbody">
+      <div class="small" style="margin-bottom:4px">Переменные строки (из CSV)</div>
+      <pre id="dRow"></pre>
+      <div class="small" style="margin:10px 0 4px">Итоговый URL</div>
+      <pre id="dUrl"></pre>
+      <div class="small" style="margin:10px 0 4px">Заголовки ответа</div>
+      <pre id="dHeaders"></pre>
+      <div class="small" style="margin:10px 0 4px">Тело ответа</div>
+      <pre id="dBody"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const api = (path, body) => fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}).then(r=>r.json());
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+
+// собственное окно подтверждения (не зависит от блокировки нативных диалогов браузером)
+function uiConfirm(message, yesLabel){
+  return new Promise(resolve=>{
+    $('#confirmMsg').textContent=message;
+    $('#confirmYes').textContent=yesLabel||'OK';
+    $('#confirmModal').classList.add('show');
+    const onKey=e=>{ if(e.key==='Escape'){e.preventDefault();done(false);} else if(e.key==='Enter'){e.preventDefault();done(true);} };
+    const done=v=>{ $('#confirmModal').classList.remove('show'); $('#confirmYes').onclick=null; $('#confirmNo').onclick=null; $('#confirmModal').onclick=null; document.removeEventListener('keydown',onKey,true); resolve(v); };
+    $('#confirmYes').onclick=()=>done(true);
+    $('#confirmNo').onclick=()=>done(false);
+    $('#confirmModal').onclick=e=>{ if(e.target.id==='confirmModal') done(false); };
+    document.addEventListener('keydown',onKey,true);
+  });
+}
+// окно ввода (замена нативного prompt) — возвращает строку или null
+function uiPrompt(message, def){
+  return new Promise(resolve=>{
+    $('#promptMsg').textContent=message;
+    const inp=$('#promptInput'); inp.value=def||'';
+    $('#promptModal').classList.add('show');
+    setTimeout(()=>{ inp.focus(); inp.select(); },30);
+    const onKey=e=>{ if(e.key==='Escape'){e.preventDefault();done(null);} else if(e.key==='Enter'){e.preventDefault();done(inp.value);} };
+    const done=v=>{ $('#promptModal').classList.remove('show'); $('#promptYes').onclick=null; $('#promptNo').onclick=null; $('#promptModal').onclick=null; document.removeEventListener('keydown',onKey,true); resolve(v); };
+    $('#promptYes').onclick=()=>done(inp.value);
+    $('#promptNo').onclick=()=>done(null);
+    $('#promptModal').onclick=e=>{ if(e.target.id==='promptModal') done(null); };
+    document.addEventListener('keydown',onKey,true);
+  });
+}
+
+// ---- табы ----
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  $(`.pane[data-pane="${t.dataset.tab}"]`).classList.add('active');
+});
+
+// ---- auth ----
+$('#authType').onchange = ()=>{
+  const v=$('#authType').value;
+  $('#authBasic').style.display = v==='basic'?'block':'none';
+  $('#authBearer').style.display = v==='bearer'?'block':'none';
+};
+
+// ---- headers ----
+function addHeaderRow(k='',v=''){
+  const div=document.createElement('div'); div.className='kv';
+  div.innerHTML=`<input placeholder="Заголовок" value=""><input placeholder="Значение" value=""><button class="ghost" type="button">✕</button>`;
+  const [ik,iv,btn]=div.querySelectorAll('input,button'); ik.value=k; iv.value=v;
+  btn.onclick=()=>div.remove();
+  $('#headersList').appendChild(div);
+}
+$('#addHeader').onclick=()=>addHeaderRow();
+
+function collectHeaders(){
+  const h={};
+  $('#headersList').querySelectorAll('.kv').forEach(row=>{
+    const [k,v]=row.querySelectorAll('input');
+    if(k.value.trim()) h[k.value.trim()]=v.value;
+  });
+  return h;
+}
+function setHeaders(h){ $('#headersList').innerHTML=''; Object.entries(h||{}).forEach(([k,v])=>addHeaderRow(k,v)); }
+
+// ---- query-параметры (двусторонняя синхронизация с URL) ----
+// кодируем, но сохраняем плейсхолдеры {{...}} читаемыми
+function encQ(s){ return encodeURIComponent(s).replace(/%7B%7B/gi,'{{').replace(/%7D%7D/gi,'}}'); }
+function decQ(s){ try{ return decodeURIComponent(String(s).replace(/\+/g,' ')); }catch(e){ return s; } }
+let syncingParams=false;
+function addParamRow(k='',v=''){
+  const div=document.createElement('div'); div.className='kv';
+  div.innerHTML=`<input placeholder="Параметр"><input placeholder="Значение"><button class="ghost" type="button">✕</button>`;
+  const [ik,iv,btn]=div.querySelectorAll('input,button'); ik.value=k; iv.value=v;
+  ik.oninput=iv.oninput=paramsToUrl;
+  btn.onclick=()=>{ div.remove(); paramsToUrl(); };
+  $('#paramsList').appendChild(div);
+}
+$('#addParam').onclick=()=>addParamRow();
+function collectParams(){
+  const out=[];
+  $('#paramsList').querySelectorAll('.kv').forEach(row=>{ const [k,v]=row.querySelectorAll('input'); if(k.value!=='') out.push({k:k.value,v:v.value}); });
+  return out;
+}
+function paramsToUrl(){
+  if(syncingParams) return;
+  syncingParams=true;
+  const base=$('#url').value.split('?')[0];
+  const q=collectParams().map(p=>encQ(p.k)+'='+encQ(p.v)).join('&');
+  $('#url').value = q ? base+'?'+q : base;
+  syncingParams=false;
+}
+function urlToParams(){
+  if(syncingParams) return;
+  syncingParams=true;
+  const q=$('#url').value.split('?')[1]||'';
+  $('#paramsList').innerHTML='';
+  if(q){ q.split('&').forEach(pair=>{ if(!pair) return; const i=pair.indexOf('='); const k=i>=0?pair.slice(0,i):pair; const v=i>=0?pair.slice(i+1):''; addParamRow(decQ(k),decQ(v)); }); }
+  syncingParams=false;
+}
+$('#url').oninput=urlToParams;
+
+// ---- собрать/применить текущий запрос ----
+function currentRequest(){
+  return {
+    name: $('#reqName').value,
+    method: $('#method').value,
+    url: $('#url').value,
+    headers: collectHeaders(),
+    auth: {
+      type: $('#authType').value,
+      username: $('#authUser').value,
+      password: $('#authPass').value,
+      token: $('#authToken').value
+    },
+    body: $('#body').value,
+    insecure: $('#insecure').checked
+  };
+}
+function applyRequest(r){
+  $('#reqName').value=r.name||'';
+  $('#method').value=(r.method||'GET').toUpperCase();
+  $('#url').value=r.url||'';
+  urlToParams();
+  setHeaders(r.headers);
+  const a=r.auth||{type:'none'};
+  $('#authType').value=a.type||'none'; $('#authType').onchange();
+  $('#authUser').value=a.username||''; $('#authPass').value=a.password||''; $('#authToken').value=a.token||'';
+  $('#body').value=r.body||'';
+  $('#insecure').checked=!!r.insecure;
+}
+
+// ---- body format ----
+$('#formatJson').onclick=()=>{
+  try{ $('#body').value=JSON.stringify(JSON.parse($('#body').value),null,2); }
+  catch(e){ toast('Невалидный JSON: '+e.message); }
+};
+
+// ---- response ----
+let lastRespBody='';
+function renderRespBody(q){
+  const text=lastRespBody||'';
+  if(!q){ $('#respBody').textContent=text; $('#respSearchInfo').textContent=''; return; }
+  const lc=text.toLowerCase(), ql=q.toLowerCase();
+  let html='', i=0, n=0;
+  while(true){
+    const idx=lc.indexOf(ql,i);
+    if(idx<0){ html+=esc(text.slice(i)); break; }
+    html+=esc(text.slice(i,idx))+'<mark>'+esc(text.slice(idx,idx+q.length))+'</mark>';
+    i=idx+q.length; n++;
+  }
+  $('#respBody').innerHTML=html;
+  $('#respSearchInfo').textContent = n ? `${n} совпад.` : 'нет';
+}
+$('#respSearch').oninput=()=>renderRespBody($('#respSearch').value.trim());
+function showResult(res){
+  const st=$('#respStatus');
+  if(!res.ok){ st.innerHTML=`<span class="badge err">ОШИБКА</span>`; lastRespBody=res.error||'неизвестная ошибка'; renderRespBody($('#respSearch').value.trim()); $('#respTime').textContent=res.timeMs?res.timeMs+' мс':''; $('#respSize').textContent=''; $('#respHead').textContent=''; return; }
+  const cls=res.status<400?'ok':'err';
+  st.innerHTML=`<span class="badge ${cls}">${res.status} ${res.statusText.replace(String(res.status),'').trim()}</span>`;
+  $('#respTime').textContent=res.timeMs+' мс';
+  $('#respSize').textContent=res.size+' Б';
+  let body=res.body||'';
+  const ct=(res.headers&&(res.headers['Content-Type']||res.headers['content-type']))||'';
+  if(ct.includes('json')){ try{ body=JSON.stringify(JSON.parse(body),null,2);}catch(e){} }
+  lastRespBody=body;
+  renderRespBody($('#respSearch').value.trim());
+  $('#respHead').textContent=Object.entries(res.headers||{}).map(([k,v])=>k+': '+v).join('\n');
+}
+$('#respBodyTab').onclick=()=>{$('#respBody').style.display='block';$('#respHead').style.display='none';};
+$('#respHeadTab').onclick=()=>{$('#respBody').style.display='none';$('#respHead').style.display='block';};
+
+// ---- send ----
+$('#sendBtn').onclick=async()=>{
+  $('#respBody').textContent='⏳ выполняется...'; $('#respStatus').innerHTML=''; $('#respTime').textContent='';
+  try{ showResult(await api('/api/send', currentRequest())); }
+  catch(e){ $('#respBody').textContent='Сбой запроса к локальному серверу: '+e.message; }
+};
+
+// ---- batch ----
+$('#csvFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const rd=new FileReader(); rd.onload=()=>$('#csv').value=rd.result; rd.readAsText(f);
+  $('#csvFileName').textContent='файл: '+f.name;
+  e.target.value=''; // сброс, чтобы можно было выбрать тот же файл повторно
+};
+$('#clearCsv').onclick=()=>{
+  $('#csv').value='';
+  $('#csvFile').value='';
+  $('#csvFileName').textContent='';
+  $('#batchResults').innerHTML='';
+  $('#batchFilterBar').style.display='none';
+  $('#batchInfo').textContent='';
+  lastBatch=[];
+};
+let batchAbort=null;
+function toggleBatchRunning(on){
+  $('#runBatch').style.display=on?'none':'';
+  $('#stopBatch').style.display=on?'':'none';
+}
+$('#stopBatch').onclick=()=>{ if(batchAbort){ batchAbort.abort(); toast('Останавливаю прогон...'); } };
+
+function ensureLiveTable(cols){
+  if($('#liveTable')) return;
+  const html='<table id="liveTable"><thead><tr><th>#</th>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+
+    '<th>Статус</th><th>Время</th><th>Ответ</th></tr></thead><tbody></tbody></table>';
+  $('#batchResults').innerHTML=html;
+}
+function appendLiveRow(i){
+  const r=lastBatch[i];
+  const cols=Object.keys(r.row||{});
+  ensureLiveTable(cols);
+  const ok=r.result.ok&&r.result.status<400;
+  const status=r.result.ok?r.result.status:'ERR';
+  const cls=ok?'ok':'err';
+  const snippet=esc((r.result.ok?r.result.body:r.result.error||'').slice(0,300));
+  const tbody=$('#liveTable tbody');
+  tbody.insertAdjacentHTML('beforeend',
+    `<tr class="rrow" data-i="${i}" title="Клик — полный ответ"><td>${i+1}</td>`+
+    cols.map(c=>`<td>${esc(r.row[c]||'')}</td>`).join('')+
+    `<td><span class="badge ${cls}">${status}</span></td><td>${r.result.timeMs||''}</td>`+
+    `<td><pre style="max-height:120px;margin:0">${snippet}</pre></td></tr>`);
+  const tr=tbody.lastElementChild;
+  tr.onclick=()=>openDetail(i);
+  $('#batchResults').scrollTop=$('#batchResults').scrollHeight;
+}
+
+$('#runBatch').onclick=async()=>{
+  lastBatch=[];
+  $('#batchResults').innerHTML='';
+  $('#batchFilterBar').style.display='none';
+  $('#batchInfo').textContent='подготовка...';
+  batchAbort=new AbortController();
+  toggleBatchRunning(true);
+  let total=0, done=0, stopped=false;
+  try{
+    const resp=await fetch('/api/batch',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({request:currentRequest(),csv:$('#csv').value,delimiter:$('#delimiter').value,delayMs:parseInt($('#delayMs').value)||0}),
+      signal:batchAbort.signal
+    });
+    if(!resp.ok){ const j=await resp.json().catch(()=>({})); $('#batchInfo').textContent=''; toast(j.error||('HTTP '+resp.status)); toggleBatchRunning(false); return; }
+    const reader=resp.body.getReader();
+    const dec=new TextDecoder();
+    let buf='';
+    while(true){
+      const {value,done:rdone}=await reader.read();
+      if(rdone) break;
+      buf+=dec.decode(value,{stream:true});
+      let nl;
+      while((nl=buf.indexOf('\n'))>=0){
+        const line=buf.slice(0,nl).trim(); buf=buf.slice(nl+1);
+        if(!line) continue;
+        const msg=JSON.parse(line);
+        if(msg.type==='meta'){ total=msg.total; $('#batchInfo').textContent=`выполнено 0 из ${total}`; }
+        else if(msg.type==='row'){
+          lastBatch.push({row:msg.row,result:msg.result});
+          appendLiveRow(lastBatch.length-1);
+          done++;
+          $('#batchInfo').textContent=`выполнено ${done} из ${total}`;
+        }
+      }
+    }
+  }catch(e){
+    if(e.name==='AbortError'){ stopped=true; }
+    else { toast('Сбой прогона: '+e.message); }
+  }
+  toggleBatchRunning(false);
+  // финализация: построить фильтр по статусам и отрисовать таблицу с фильтром
+  if(lastBatch.length){
+    const tail = stopped ? ` (остановлено на ${done} из ${total})` : '';
+    renderBatch(lastBatch);
+    $('#batchInfo').textContent += tail;
+  } else {
+    $('#batchInfo').textContent = stopped ? 'остановлено, нет результатов' : 'нет результатов';
+  }
+};
+let lastBatch=[];
+function statusKey(r){ return r.result.ok ? String(r.result.status) : 'ERR'; }
+function matchFilter(r,f){
+  if(!f) return true;
+  if(f==='ERR') return !r.result.ok;
+  if(/^[2345]xx$/.test(f)){ if(!r.result.ok) return false; const d=f[0]; return r.result.status>=d*100 && r.result.status<(+d+1)*100; }
+  return r.result.ok && String(r.result.status)===f;
+}
+function renderBatch(rows){
+  lastBatch=rows||[];
+  const okN=lastBatch.filter(r=>r.result.ok&&r.result.status<400).length;
+  $('#batchInfo').textContent=`всего ${lastBatch.length}, успешно ${okN}, с ошибкой ${lastBatch.length-okN}`;
+
+  // собрать фильтр: диапазоны + конкретные коды, что реально встретились
+  const counts={};
+  lastBatch.forEach(r=>{ const k=statusKey(r); counts[k]=(counts[k]||0)+1; });
+  const sel=$('#statusFilter'); const prev=sel.value;
+  let opts=`<option value="">все (${lastBatch.length})</option>`;
+  [['2xx','2xx успешные'],['3xx','3xx редиректы'],['4xx','4xx клиентские'],['5xx','5xx серверные']].forEach(([v,label])=>{
+    const n=lastBatch.filter(r=>matchFilter(r,v)).length;
+    if(n) opts+=`<option value="${v}">${label} (${n})</option>`;
+  });
+  Object.keys(counts).filter(k=>k!=='ERR').sort((a,b)=>a-b).forEach(k=>{ opts+=`<option value="${k}">код ${k} (${counts[k]})</option>`; });
+  if(counts['ERR']) opts+=`<option value="ERR">ошибки сети (${counts['ERR']})</option>`;
+  sel.innerHTML=opts;
+  if([...sel.options].some(o=>o.value===prev)) sel.value=prev;
+  $('#batchFilterBar').style.display=lastBatch.length?'flex':'none';
+  renderBatchTable();
+}
+$('#statusFilter').onchange=renderBatchTable;
+$('#batchSearch').oninput=renderBatchTable;
+function batchHaystack(r){
+  return [...Object.values(r.row||{}), r.result.ok?('status '+r.result.status+' '+(r.result.statusText||'')):'error',
+    r.result.url||'', r.result.body||'', r.result.error||''].join(' ').toLowerCase();
+}
+function renderBatchTable(){
+  const f=$('#statusFilter').value;
+  const q=$('#batchSearch').value.trim().toLowerCase();
+  const rows=lastBatch.filter(r=>matchFilter(r,f) && (!q || batchHaystack(r).includes(q)));
+  $('#filterInfo').textContent=(f||q)?`показано ${rows.length} из ${lastBatch.length}`:'';
+  const cols=lastBatch.length?Object.keys(lastBatch[0].row||{}):[];
+  let html='<table><thead><tr><th>#</th>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+'<th>Статус</th><th>Время</th><th>Ответ</th></tr></thead><tbody>';
+  rows.forEach((r)=>{
+    const i=lastBatch.indexOf(r);
+    const ok=r.result.ok&&r.result.status<400;
+    const status=r.result.ok?r.result.status:'ERR';
+    const cls=ok?'ok':'err';
+    const snippet=esc((r.result.ok?r.result.body:r.result.error||'').slice(0,300));
+    html+=`<tr class="rrow" data-i="${i}" title="Клик — полный ответ"><td>${i+1}</td>`+cols.map(c=>`<td>${esc(r.row[c]||'')}</td>`).join('')+
+      `<td><span class="badge ${cls}">${status}</span></td><td>${r.result.timeMs||''}</td><td><pre style="max-height:120px;margin:0">${snippet}</pre></td></tr>`;
+  });
+  html+='</tbody></table>';
+  $('#batchResults').innerHTML=html;
+  $('#batchResults').querySelectorAll('tr.rrow').forEach(tr=>tr.onclick=()=>openDetail(+tr.dataset.i));
+}
+
+function openDetail(i){
+  const r=lastBatch[i]; if(!r) return;
+  $('#dIdx').textContent=i+1;
+  if(!r.result.ok){
+    $('#dStatus').innerHTML=`<span class="badge err">ОШИБКА СЕТИ</span>`;
+  } else {
+    const ok=r.result.status<400;
+    $('#dStatus').innerHTML=`<span class="badge ${ok?'ok':'err'}">${r.result.status} ${(r.result.statusText||'').replace(String(r.result.status),'').trim()}</span>`;
+  }
+  $('#dMeta').textContent=[r.result.timeMs?r.result.timeMs+' мс':'', r.result.size?r.result.size+' Б':''].filter(Boolean).join('   ');
+  $('#dRow').textContent=Object.entries(r.row||{}).map(([k,v])=>`${k} = ${v}`).join('\n')||'—';
+  $('#dUrl').textContent=r.result.url||'';
+  $('#dHeaders').textContent=Object.entries(r.result.headers||{}).map(([k,v])=>`${k}: ${v}`).join('\n')||'—';
+  let body=r.result.ok?(r.result.body||''):(r.result.error||'');
+  const ct=(r.result.headers&&(r.result.headers['Content-Type']||r.result.headers['content-type']))||'';
+  if(ct.includes('json')){ try{ body=JSON.stringify(JSON.parse(body),null,2);}catch(e){} }
+  $('#dBody').textContent=body||'—';
+  $('#detailModal').classList.add('show');
+}
+$('#dClose').onclick=()=>$('#detailModal').classList.remove('show');
+$('#detailModal').onclick=e=>{ if(e.target.id==='detailModal') $('#detailModal').classList.remove('show'); };
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') $('#detailModal').classList.remove('show'); });
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+// ---- collections ----
+async function loadCollectionList(selectName){
+  const names=await fetch('/api/collections',{cache:'no-store'}).then(r=>r.json());
+  const sel=$('#collectionFile'); sel.innerHTML='';
+  const opt0=document.createElement('option'); opt0.value=''; opt0.textContent='— коллекции —'; sel.appendChild(opt0);
+  (names||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
+  if(selectName) sel.value=selectName;
+}
+$('#reloadCollections').onclick=()=>loadCollectionList();
+$('#renameCollection').onclick=async()=>{
+  const f=$('#collectionFile').value;
+  if(!f){ toast('Сначала выбери коллекцию'); return; }
+  const nn=await uiPrompt('Новое имя файла коллекции:', f);
+  if(nn===null || !nn.trim()) return;
+  const res=await api('/api/collection/rename',{file:f, newFile:nn.trim()});
+  if(res.error){ toast(res.error); return; }
+  if(loadedFile===f) loadedFile=res.file;
+  toast('Переименована в '+res.file);
+  await refreshCollection(res.file);
+};
+
+// ---- открыть коллекцию из произвольного JSON-файла (импорт в папку collections) ----
+function isReqLike(x){ return x && typeof x==='object' && (x.url!==undefined || x.method!==undefined); }
+function normalizeCollection(p, fallbackName){
+  if(Array.isArray(p)) return {name:fallbackName, requests:p.filter(isReqLike)};
+  if(p && Array.isArray(p.requests)) return {name:p.name||fallbackName, requests:p.requests.filter(isReqLike)};
+  if(isReqLike(p)) return {name:fallbackName, requests:[p]};
+  return null;
+}
+// предложить свободное имя вида "name-2.json", "name-3.json", ...
+function uniqueName(name, list){
+  const m=name.match(/^(.*?)(\.json)$/i); const base=m?m[1]:name; const ext=m?m[2]:'.json';
+  let i=2, cand;
+  do{ cand=`${base}-${i}${ext}`; i++; }while(list.includes(cand));
+  return cand;
+}
+$('#openCollectionFile').onclick=()=>$('#collectionFileInput').click();
+$('#collectionFileInput').onchange=async e=>{
+  const file=e.target.files[0]; e.target.value=''; if(!file) return;
+  let parsed;
+  try{ parsed=JSON.parse(await file.text()); }
+  catch(err){ toast('Не удалось прочитать JSON: '+err.message); return; }
+  const col=normalizeCollection(parsed, file.name.replace(/\.json$/i,''));
+  if(!col || !col.requests || !col.requests.length){ toast('В файле не найдено запросов (ожидается коллекция Pachman)'); return; }
+  let fileName=file.name; if(!/\.json$/i.test(fileName)) fileName+='.json';
+  const existing=(await fetch('/api/collections',{cache:'no-store'}).then(r=>r.json()).catch(()=>[]))||[];
+  if(existing.includes(fileName)){
+    const overwrite=await uiConfirm(`Коллекция «${fileName}» уже существует.\n\nOK — перезаписать.\nОтмена — сохранить под другим именем.`,'Перезаписать');
+    if(!overwrite){
+      let suggestion=uniqueName(fileName, existing);
+      while(true){
+        const input=await uiPrompt('Имя файла для импортируемой коллекции:', suggestion);
+        if(input===null) return;                 // отмена — ничего не импортируем
+        let nn=input.trim(); if(!nn){ continue; }
+        if(!/\.json$/i.test(nn)) nn+='.json';
+        if(existing.includes(nn)){
+          if(await uiConfirm(`«${nn}» тоже занято. Перезаписать его?`,'Перезаписать')){ fileName=nn; break; }
+          suggestion=uniqueName(nn, existing); continue;
+        }
+        fileName=nn; break;
+      }
+    }
+  }
+  const res=await api('/api/collection/save',{file:fileName, append:false, collection:col});
+  if(res.error){ toast(res.error); return; }
+  loadedFile=res.file; loadedIndex=null;
+  await refreshCollection(res.file);
+  toast(`Импортирована коллекция: ${res.file} (запросов: ${res.count})`);
+};
+$('#collectionFile').onchange=async()=>{
+  const f=$('#collectionFile').value; const list=$('#reqList'); list.innerHTML='';
+  if(!f) return;
+  const col=await fetch('/api/collection?file='+encodeURIComponent(f),{cache:'no-store'}).then(r=>r.json());
+  if(col.error){ toast(col.error); return; }
+  $('#saveFile').value=f;
+  const cn=document.createElement('div'); cn.className='col-name'; cn.textContent=col.name||f; list.appendChild(cn);
+  (col.requests||[]).forEach((r,idx)=>{
+    const d=document.createElement('div'); d.className='req-item';
+    const title=r.name||r.url||'(без имени)';
+    d.innerHTML=`<span class="m" style="color:var(--accent)">${(r.method||'GET').toUpperCase()}</span>`+
+      `<span class="rn">${esc(title)}</span>`+
+      `<button class="ico dup" type="button" title="Дублировать">⧉</button>`+
+      `<button class="ico ren" type="button" title="Переименовать">✎</button>`+
+      `<button class="del" type="button" title="Удалить запрос">✕</button>`;
+    d.onclick=()=>{ applyRequest(r); loadedFile=f; loadedIndex=idx; updateSaveHint(); toast('Загружен: '+(r.name||r.url)); };
+    d.querySelector('.dup').onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); duplicateRequest(f, idx); };
+    d.querySelector('.ren').onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); renameRequest(f, idx, r); };
+    d.querySelector('.del').onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); deleteRequest(f, idx, title); };
+    list.appendChild(d);
+  });
+}
+
+async function refreshCollection(file){
+  await loadCollectionList(file);
+  $('#collectionFile').value=file;
+  await $('#collectionFile').onchange();
+}
+async function deleteRequest(file, index, title){
+  if(!(await uiConfirm(`Удалить запрос «${title}» из ${file}?`, 'Удалить'))) return;
+  const res=await api('/api/collection/delete',{file, index});
+  if(res.error){ toast(res.error); return; }
+  toast('Удалён: '+title);
+  $('#saveInfo').textContent=`Удалён запрос из ${res.file} (осталось: ${res.count})`;
+  if(loadedFile===file){ loadedFile=null; loadedIndex=null; updateSaveHint(); } // индексы сдвинулись
+  await refreshCollection(file);
+}
+async function duplicateRequest(file, index){
+  const res=await api('/api/collection/duplicate',{file, index});
+  if(res.error){ toast(res.error); return; }
+  toast('Дублирован запрос');
+  await refreshCollection(file);
+}
+async function renameRequest(file, index, r){
+  const nn=await uiPrompt('Новое имя запроса:', r.name||'');
+  if(nn===null) return;
+  const upd=Object.assign({}, r, {name:nn.trim()});
+  const res=await api('/api/collection/update',{file, index, request:upd});
+  if(res.error){ toast(res.error); return; }
+  toast('Переименован запрос');
+  await refreshCollection(file);
+}
+
+// ---- save ----
+// отслеживаем, из какой коллекции/позиции загружен текущий запрос
+let loadedFile=null, loadedIndex=null;
+function updateSaveHint(){
+  const el=$('#saveHint'); if(!el) return;
+  if(loadedFile && loadedIndex!=null){
+    el.textContent=`«Сохранить» обновит запрос #${loadedIndex+1} в «${loadedFile}» (без копий). Для отдельной копии — «В новый файл…» или ⧉ в списке.`;
+  } else {
+    const f=$('#saveFile').value.trim()||$('#collectionFile').value;
+    el.textContent = f ? `«Сохранить» добавит новый запрос в «${f}».` : '«Сохранить» добавит запрос — укажи файл или открой коллекцию.';
+  }
+}
+$('#saveFile').oninput=updateSaveHint;
+
+$('#newReqBtn').onclick=()=>{
+  applyRequest({method:'GET',auth:{type:'none'}});
+  loadedFile=null; loadedIndex=null; updateSaveHint();
+  $('#reqList').querySelectorAll('.req-item').forEach(x=>x.classList.remove('active'));
+  toast('Новый пустой запрос');
+};
+
+// умное сохранение: обновляем по месту, если запрос загружен из этой коллекции; иначе добавляем
+$('#saveSmart').onclick=async()=>{
+  const file=($('#saveFile').value.trim()||loadedFile||$('#collectionFile').value);
+  if(!file){ toast('Укажи имя файла или открой коллекцию'); return; }
+  if(loadedFile && loadedIndex!=null && file===loadedFile){
+    const res=await api('/api/collection/update',{file, index:loadedIndex, request:currentRequest()});
+    if(res.error){ toast(res.error); return; }
+    $('#saveInfo').textContent=`Обновлён запрос #${loadedIndex+1} в ${res.file}`;
+    toast('Запрос обновлён');
+    await refreshCollection(res.file); updateSaveHint();
+  } else {
+    const res=await api('/api/collection/save',{file, append:true, request:currentRequest()});
+    if(res.error){ toast(res.error); return; }
+    loadedFile=res.file; loadedIndex=res.count-1; // дальше редактируем добавленный
+    $('#saveInfo').textContent=`Добавлен запрос в ${res.file} (всего: ${res.count})`;
+    toast('Сохранено');
+    await refreshCollection(res.file); updateSaveHint();
+  }
+};
+
+$('#saveNewFile').onclick=async()=>{
+  let name=await uiPrompt('Имя нового файла коллекции:', $('#saveFile').value.trim()||'my.json');
+  if(name===null) return; name=name.trim(); if(!name) return;
+  if(!/\.json$/i.test(name)) name+='.json';
+  const existing=(await fetch('/api/collections',{cache:'no-store'}).then(r=>r.json()).catch(()=>[]))||[];
+  if(existing.includes(name) && !(await uiConfirm(`Файл «${name}» уже существует. Перезаписать его одним этим запросом?`,'Перезаписать'))) return;
+  const base=name.replace(/\.json$/i,'');
+  const res=await api('/api/collection/save',{file:name, append:false, collection:{name:base, requests:[currentRequest()]}});
+  if(res.error){ toast(res.error); return; }
+  loadedFile=res.file; loadedIndex=0;
+  $('#saveInfo').textContent=`Создан ${res.file}`;
+  toast('Создан файл '+res.file);
+  await refreshCollection(res.file); updateSaveHint();
+};
+
+// init
+addHeaderRow();
+loadCollectionList();
+updateSaveHint();
+</script>
+</body>
+</html>
