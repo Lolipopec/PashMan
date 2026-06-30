@@ -76,6 +76,18 @@
   .small{font-size:12px;color:var(--muted)}
   .split{display:flex;gap:14px;flex-wrap:wrap}
   .file-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  button.active-view{border-color:var(--accent2);color:var(--txt);background:var(--panel)}
+  #csvTable{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+  #csvTable table{width:auto;border-collapse:collapse}
+  #csvTable th,#csvTable td{border:1px solid var(--line);padding:0}
+  #csvTable th.hdr{display:flex;align-items:center}
+  #csvTable input{border:none;background:transparent;border-radius:0;width:150px;padding:6px 7px}
+  #csvTable input:focus{background:var(--panel2);outline:1px solid var(--accent2)}
+  #csvTable th.hdr{background:var(--panel2)}
+  #csvTable th.hdr input{font-weight:700;flex:1;min-width:90px}
+  #csvTable .corner{background:var(--panel2);width:30px}
+  #csvTable .coldel,#csvTable .rowdel{border:none;background:transparent;color:var(--err);cursor:pointer;font-size:11px;padding:2px 5px;opacity:.5}
+  #csvTable .coldel:hover,#csvTable .rowdel:hover{opacity:1}
 </style>
 </head>
 <body>
@@ -171,8 +183,17 @@
           <input type="file" id="csvFile" accept=".csv,.txt" style="width:auto">
           <span class="small" id="csvFileName"></span>
           <button class="ghost" id="clearCsv" title="Очистить CSV и результаты">✕ Очистить</button>
+          <span style="margin-left:auto"></span>
+          <button class="ghost active-view" id="csvViewText">Текст</button>
+          <button class="ghost" id="csvViewTable">Таблица</button>
         </div>
         <textarea id="csv" placeholder="id,name&#10;1,Alice&#10;2,Bob"></textarea>
+        <div id="csvTable" style="display:none"></div>
+        <div class="row-flex" id="csvTableTools" style="display:none;margin-top:6px">
+          <button class="ghost" id="csvAddRow">+ строка</button>
+          <button class="ghost" id="csvAddCol">+ столбец</button>
+          <span class="small">Первая строка — заголовки колонок. Столбцы определяются разделителем выше.</span>
+        </div>
         <div class="row-flex" style="margin-top:8px">
           <button class="primary" id="runBatch">Прогнать по CSV</button>
           <button id="stopBatch" style="display:none;border-color:var(--err);color:var(--err)">⏹ Остановить</button>
@@ -460,7 +481,7 @@ $('#sendBtn').onclick=async()=>{
 // ---- batch ----
 $('#csvFile').onchange=e=>{
   const f=e.target.files[0]; if(!f)return;
-  const rd=new FileReader(); rd.onload=()=>$('#csv').value=rd.result; rd.readAsText(f);
+  const rd=new FileReader(); rd.onload=()=>{ $('#csv').value=rd.result; if(csvTableVisible()){ csvTextToGrid(); renderCsvTable(); } }; rd.readAsText(f);
   $('#csvFileName').textContent='файл: '+f.name;
   e.target.value=''; // сброс, чтобы можно было выбрать тот же файл повторно
 };
@@ -472,7 +493,94 @@ $('#clearCsv').onclick=()=>{
   $('#batchFilterBar').style.display='none';
   $('#batchInfo').textContent='';
   lastBatch=[];
+  csvGrid=[]; if(csvTableVisible()){ csvTextToGrid(); renderCsvTable(); }
 };
+
+// ---- табличный редактор CSV (двусторонняя синхронизация с #csv и разделителем) ----
+function getDelim(){ const d=$('#delimiter').value; return d!==''? d[0] : ','; }
+function csvTableVisible(){ return $('#csvTable').style.display!=='none'; }
+let csvGrid=[]; // массив строк, csvGrid[0] — заголовки
+function parseCSVText(text, delim){
+  const rows=[]; let row=[], cell='', i=0, inQ=false;
+  const pc=()=>{ row.push(cell); cell=''; };
+  const pr=()=>{ pc(); rows.push(row); row=[]; };
+  while(i<text.length){
+    const ch=text[i];
+    if(inQ){
+      if(ch==='"'){ if(text[i+1]==='"'){ cell+='"'; i+=2; continue; } inQ=false; i++; continue; }
+      cell+=ch; i++; continue;
+    }
+    if(ch==='"'){ inQ=true; i++; continue; }
+    if(ch===delim){ pc(); i++; continue; }
+    if(ch==='\r'){ i++; continue; }
+    if(ch==='\n'){ pr(); i++; continue; }
+    cell+=ch; i++;
+  }
+  if(cell!=='' || row.length){ pr(); }
+  return rows;
+}
+function serializeCSV(grid, delim){
+  const nq=s=> s.includes(delim)||s.includes('"')||s.includes('\n')||s.includes('\r');
+  return grid.map(r=>r.map(c=>{ c=(c==null?'':String(c)); return nq(c)? '"'+c.replace(/"/g,'""')+'"' : c; }).join(delim)).join('\n');
+}
+function normalizeGrid(){
+  let cols=0; csvGrid.forEach(r=>cols=Math.max(cols,r.length));
+  if(csvGrid.length===0 || cols===0){ csvGrid=[['']]; cols=1; }
+  csvGrid.forEach(r=>{ while(r.length<cols) r.push(''); });
+}
+function csvTextToGrid(){ csvGrid=parseCSVText($('#csv').value, getDelim()); normalizeGrid(); }
+function gridToCsvText(){ $('#csv').value=serializeCSV(csvGrid, getDelim()); }
+function renderCsvTable(){
+  normalizeGrid();
+  const cols=csvGrid[0].length;
+  const tbl=document.createElement('table');
+  const thead=document.createElement('thead'), htr=document.createElement('tr');
+  const corner=document.createElement('th'); corner.className='corner'; htr.appendChild(corner);
+  for(let c=0;c<cols;c++){
+    const th=document.createElement('th'); th.className='hdr';
+    const inp=document.createElement('input'); inp.value=csvGrid[0][c]||''; inp.placeholder='колонка';
+    inp.oninput=()=>{ csvGrid[0][c]=inp.value; gridToCsvText(); };
+    const del=document.createElement('button'); del.type='button'; del.className='coldel'; del.textContent='✕'; del.title='Удалить столбец';
+    del.onclick=()=>delCol(c);
+    th.appendChild(inp); th.appendChild(del); htr.appendChild(th);
+  }
+  thead.appendChild(htr); tbl.appendChild(thead);
+  const tb=document.createElement('tbody');
+  for(let r=1;r<csvGrid.length;r++){
+    const tr=document.createElement('tr');
+    const td0=document.createElement('td'); td0.className='corner';
+    const rdel=document.createElement('button'); rdel.type='button'; rdel.className='rowdel'; rdel.textContent='✕'; rdel.title='Удалить строку';
+    rdel.onclick=()=>{ csvGrid.splice(r,1); gridToCsvText(); renderCsvTable(); };
+    td0.appendChild(rdel); tr.appendChild(td0);
+    for(let c=0;c<cols;c++){
+      const td=document.createElement('td');
+      const inp=document.createElement('input'); inp.value=csvGrid[r][c]||'';
+      inp.oninput=()=>{ csvGrid[r][c]=inp.value; gridToCsvText(); };
+      td.appendChild(inp); tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  }
+  tbl.appendChild(tb);
+  const host=$('#csvTable'); host.innerHTML=''; host.appendChild(tbl);
+}
+function delCol(c){
+  csvGrid.forEach(r=>r.splice(c,1));
+  if(!csvGrid.length || !csvGrid[0].length) csvGrid=[['']];
+  gridToCsvText(); renderCsvTable();
+}
+$('#csvAddRow').onclick=()=>{ normalizeGrid(); csvGrid.push(new Array(csvGrid[0].length).fill('')); gridToCsvText(); renderCsvTable(); };
+$('#csvAddCol').onclick=()=>{ normalizeGrid(); csvGrid.forEach(r=>r.push('')); gridToCsvText(); renderCsvTable(); };
+function showCsvView(table){
+  $('#csv').style.display = table?'none':'block';
+  $('#csvTable').style.display = table?'block':'none';
+  $('#csvTableTools').style.display = table?'flex':'none';
+  $('#csvViewText').classList.toggle('active-view', !table);
+  $('#csvViewTable').classList.toggle('active-view', table);
+  if(table){ csvTextToGrid(); renderCsvTable(); }
+}
+$('#csvViewText').onclick=()=>showCsvView(false);
+$('#csvViewTable').onclick=()=>showCsvView(true);
+$('#delimiter').oninput=()=>{ if(csvTableVisible()){ csvTextToGrid(); renderCsvTable(); } };
 let batchAbort=null;
 function toggleBatchRunning(on){
   $('#runBatch').style.display=on?'none':'';
