@@ -33,11 +33,11 @@
 
 Кратко:
 - **Windows** — двойной клик по `pashman-win.exe` (при предупреждении SmartScreen: «Подробнее» → «Выполнить в любом случае»).
-- **macOS** — скачать через Терминал: `curl`:
+- **macOS** — скачать через Терминал (файл появится на Рабочем столе):
   ```bash
   # Apple Silicon (M1–M4); для Intel — pashman-mac-intel
-  curl -L -o pashman https://github.com/Lolipopec/PashMan/raw/main/dist/pashman-mac-arm64
-  chmod +x pashman && ./pashman
+  curl -L -o ~/Desktop/pashman https://github.com/Lolipopec/PashMan/raw/main/dist/pashman-mac-arm64
+  chmod +x ~/Desktop/pashman && ~/Desktop/pashman
   ```
   Если файл уже скачан браузером — **правый клик по файлу → «Открыть» → «Открыть»** (подтвердить один раз, Терминал не нужен).
 
